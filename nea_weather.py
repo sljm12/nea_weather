@@ -64,6 +64,11 @@ class NeaWeatherProcessing:
         self.rain_df = self.generate_rain_data_frame(rain_picture)
 
     def generate_rain_data_frame(self, picture_fp):
+        """
+
+        :param picture_fp: a file or a fp that PIL can use.
+        :return:
+        """
         im = Image.open(picture_fp)
         (x, y) = im.size
         arr_points = self.get_rain_area(im, x, y, self.upper_left_x, self.upper_left_y, self.lower_right_x, self.lower_right_y)
@@ -71,6 +76,17 @@ class NeaWeatherProcessing:
         return gpd.GeoDataFrame(data=arr_points, crs="EPSG:4326")
 
     def get_rain_area(self, im, x, y, upper_left_x, upper_left_y, lower_right_x, lower_right_y):
+        """
+
+        :param im: the PIL Image object
+        :param x: the picture size
+        :param y: the picture size
+        :param upper_left_x: Extent of the image
+        :param upper_left_y: Extent of the image
+        :param lower_right_x: Extent of the image
+        :param lower_right_y: Extent of the image
+        :return:
+        """
         arr_points = []
         for px in range(x):
             for py in range(y):
@@ -88,11 +104,17 @@ class NeaWeatherProcessing:
         return len(intersect)
 
     def create_location_df(self, long, lat, buffer_in_degrees):
+        """
+
+        :param long:
+        :param lat:
+        :param buffer_in_degrees: roughly 0.009 is about 1km
+        :return:
+        """
         myLoc = Point((long, lat))
         buf = myLoc.buffer(buffer_in_degrees)
 
-        with_buffer = []
-        with_buffer.append({"type": "location", "geometry": buf})
+        with_buffer = [{"type": "location", "geometry": buf}]
         return gpd.GeoDataFrame(data=with_buffer, crs="EPSG:4326")
 
 
