@@ -1,4 +1,4 @@
 hug
-geopandas
 pillow
 requests
+shapely

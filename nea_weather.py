@@ -1,8 +1,7 @@
 from PIL import Image
 import datetime
 import requests
-import geopandas as gpd
-from shapely.geometry import Point
+from shapely.geometry import Point, MultiPoint
 import os
 import sys
 from io import BytesIO
@@ -73,7 +72,8 @@ class NeaWeatherProcessing:
         (x, y) = im.size
         arr_points = self.get_rain_area(im, x, y, self.upper_left_x, self.upper_left_y, self.lower_right_x, self.lower_right_y)
 
-        return gpd.GeoDataFrame(data=arr_points, crs="EPSG:4326")
+        #return gpd.GeoDataFrame(data=arr_points, crs="EPSG:4326")
+        return arr_points
 
     def get_rain_area(self, im, x, y, upper_left_x, upper_left_y, lower_right_x, lower_right_y):
         """
@@ -94,14 +94,16 @@ class NeaWeatherProcessing:
                 if a == 255:
                     point = Point((find_x_pixel(upper_left_x, lower_right_x, x, px),
                                    find_y_pixel(upper_left_y, lower_right_y, y, py)))
-                    arr_points.append({"type": "rain", "geometry": point})
-        return arr_points
+                    #arr_points.append({"type": "rain", "geometry": point})
+                    arr_points.append(point)
+        return MultiPoint(arr_points)
 
     def check_rain(self, long, lat, buffer_in_degrees):
         newDf = self.create_location_df(long, lat, buffer_in_degrees)
 
-        intersect = gpd.overlay(self.rain_df, newDf, how="intersection")
-        return len(intersect)
+        #intersect = gpd.overlay(self.rain_df, newDf, how="intersection")
+        #return len(intersect)
+        return self.rain_df.intersects(newDf)
 
     def create_location_df(self, long, lat, buffer_in_degrees):
         """
@@ -113,9 +115,9 @@ class NeaWeatherProcessing:
         """
         myLoc = Point((long, lat))
         buf = myLoc.buffer(buffer_in_degrees)
-
-        with_buffer = [{"type": "location", "geometry": buf}]
-        return gpd.GeoDataFrame(data=with_buffer, crs="EPSG:4326")
+        return buf
+        #with_buffer = [{"type": "location", "geometry": buf}]
+        #return gpd.GeoDataFrame(data=with_buffer, crs="EPSG:4326")
 
 
 if __name__ == "__main__":
@@ -126,23 +128,7 @@ if __name__ == "__main__":
     location = (float(sys.argv[1]), float(sys.argv[2]))
 
     filename = download_rain_file(mode="memory")
-    '''
-    im = Image.open(filename)
-    (x, y) = im.size
-    arr_points = get_rain_area(im, x, y, upper_left_x, upper_left_y, lower_right_x, lower_right_y)
 
-    rain_df = gpd.GeoDataFrame(data=arr_points, crs="EPSG:4326")
-
-    myLoc = Point(location)
-    buf = myLoc.buffer(0.009)
-
-    with_buffer = []
-    with_buffer.append({"type": "location", "geometry": buf})
-    newDf = gpd.GeoDataFrame(data=with_buffer, crs="EPSG:4326")
-
-    intersect = gpd.overlay(rain_df, newDf, how="intersection")
-    '''
-
-    a = NeaWeatherProcessing(filename)
+    a = NeaWeatherProcessing("testImage/a.png")
     intersect = a.check_rain(location[0], location[1], 0.009)
     print(intersect)
