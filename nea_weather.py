@@ -2,6 +2,7 @@ from PIL import Image
 import datetime
 import requests
 from shapely.geometry import Point, MultiPoint
+from shapely.ops import nearest_points
 import os
 import sys
 from io import BytesIO
@@ -72,7 +73,6 @@ class NeaWeatherProcessing:
         (x, y) = im.size
         arr_points = self.get_rain_area(im, x, y, self.upper_left_x, self.upper_left_y, self.lower_right_x, self.lower_right_y)
 
-        #return gpd.GeoDataFrame(data=arr_points, crs="EPSG:4326")
         return arr_points
 
     def get_rain_area(self, im, x, y, upper_left_x, upper_left_y, lower_right_x, lower_right_y):
@@ -94,15 +94,13 @@ class NeaWeatherProcessing:
                 if a == 255:
                     point = Point((find_x_pixel(upper_left_x, lower_right_x, x, px),
                                    find_y_pixel(upper_left_y, lower_right_y, y, py)))
-                    #arr_points.append({"type": "rain", "geometry": point})
+
                     arr_points.append(point)
         return MultiPoint(arr_points)
 
     def check_rain(self, long, lat, buffer_in_degrees):
         newDf = self.create_location_df(long, lat, buffer_in_degrees)
 
-        #intersect = gpd.overlay(self.rain_df, newDf, how="intersection")
-        #return len(intersect)
         return self.rain_df.intersects(newDf)
 
     def create_location_df(self, long, lat, buffer_in_degrees):
@@ -116,11 +114,22 @@ class NeaWeatherProcessing:
         myLoc = Point((long, lat))
         buf = myLoc.buffer(buffer_in_degrees)
         return buf
-        #with_buffer = [{"type": "location", "geometry": buf}]
-        #return gpd.GeoDataFrame(data=with_buffer, crs="EPSG:4326")
+
+    def get_is_raining_full(self, long, lat, buffer_in_degrees):
+        my_loc = self.create_location_df(long, lat, 0.009)
+
+        n_points = nearest_points(self.rain_df, my_loc)
+        data = []
+        for i in n_points:
+            data.append({
+                "point": [i.x, i.y],
+                "distance": i.distance(my_loc)
+            })
+        return data
 
 
 if __name__ == "__main__":
+    '''
     upper_left_x = 103.5544
     lower_right_x = 104.1337
     upper_left_y = 1.4771
@@ -132,3 +141,9 @@ if __name__ == "__main__":
     a = NeaWeatherProcessing("testImage/a.png")
     intersect = a.check_rain(location[0], location[1], 0.009)
     print(intersect)
+    '''
+    location = (103.8752, 1.3715)
+
+    a = NeaWeatherProcessing("test/dpsri_70km_2020100807100000dBR.dpsri.png")
+    my_loc = a.create_location_df(location[0], location[1], 0.009)
+    data = a.get_is_raining_full(location[0], location[1], 0.009)
